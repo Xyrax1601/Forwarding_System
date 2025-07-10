@@ -298,11 +298,11 @@
             document.getElementById('dataForm').classList.remove('hidden');
         }
 
-        // --- PDF EXPORT: Wide, No Margins, Wider NAME and SIGNATURE ---
+        // --- PDF EXPORT: Portrait ---
         function printPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({
-                orientation: "landscape",
+                orientation: "portrait", // Portrait orientation
                 unit: "mm",
                 format: "a4"
             });
@@ -322,8 +322,8 @@
                 styles: { fontSize: 10 },
                 margin: { left: 0, right: 0, top: 0, bottom: 0 },
                 columnStyles: {
-                    3: { cellWidth: 50 },
-                    4: { cellWidth: 40 },
+                    3: { cellWidth: 36 },
+                    4: { cellWidth: 36 },
                 },
                 tableWidth: 'auto',
             });
@@ -335,7 +335,7 @@
             document.head.appendChild(script);
         })();
 
-        // --- WORD EXPORT: Wide, No Margins, Wider NAME and SIGNATURE ---
+        // --- WORD EXPORT: Portrait ---
         async function printWord() {
             const { Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun, WidthType } = window.docx;
             const cellWidths = [14, 16, 14, 22, 18, 16];
@@ -410,12 +410,8 @@
                 sections: [
                     {
                         properties: {
-                            margin: { top: 0, right: 0, bottom: 0, left: 0 },
-                            page: {
-                                size: {
-                                    orientation: "landscape",
-                                }
-                            }
+                            margin: { top: 0, right: 0, bottom: 0, left: 0 }
+                            // Portrait orientation is the default for docx
                         },
                         children: [
                             new Paragraph({
