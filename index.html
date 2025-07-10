@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>VCRI DOCUMENT FORWARDING SYSTEM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+    @media print {
+        body * { visibility: hidden !important; }
+        #printableContent, #printableContent * { visibility: visible !important; }
+        #printableContent {
+            position: absolute !important; left: 0; top: 0; width: 100vw !important;
+            margin: 0 !important; padding: 0 !important;
+            box-shadow: none !important; background: white !important; z-index: 1000 !important;
+        }
+    }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col items-center p-6 uppercase">
+    <div class="w-full max-w-7xl bg-white rounded-2xl shadow p-8 mt-8">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">RESEARCH OFFICE</h2>
+        <!-- Data Input Form -->
+        <form id="dataForm" class="space-y-2" autocomplete="off">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1200px] mb-4 border">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-2 py-2 border">TRACK DETAILS</th>
+                            <th class="px-2 py-2 border">DOCUMENT TITLE</th>
+                            <th class="px-2 py-2 border">OFFICE/DEPARTMENT</th>
+                            <th class="px-2 py-2 border">NAME</th>
+                            <th class="px-2 py-2 border">SIGNATURE</th>
+                            <th class="px-2 py-2 border">DATE</th>
+                            <th class="px-2 py-2 border"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="inputRows">
+                        <tr>
+                            <td class="border"><input type="text" name="trackDetails[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;"></td>
+                            <td class="border"><input type="text" name="documentTitle[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;"></td>
+                            <td class="border"><input type="text" name="office[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;"></td>
+                            <td class="border"><input type="text" name="name[]" class="w-full p-5 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;"></td>
+                            <td class="border"><input type="text" name="signature[]" class="w-full p-5 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;"></td>
+                            <td class="border"><input type="date" name="date[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;"></td>
+                            <td class="border text-center">
+                                <button type="button" onclick="removeRow(this)" class="text-red-500 font-bold text-lg" title="Remove Row">&times;</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex flex-row gap-2">
+                <button type="button" onclick="addRow()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">ADD ROW</button>
+                <button type="button" onclick="showClearModal()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">CLEAR FIELDS</button>
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 ml-auto">PREVIEW</button>
+            </div>
+        </form>
+
+        <!-- Preview Area -->
+        <div id="previewArea" class="hidden mt-8">
+            <div class="overflow-x-auto">
+                <div id="printableContent" class="bg-white border rounded-lg shadow p-4 min-w-[1200px]"></div>
+            </div>
+            <div class="mt-4 flex gap-2">
+                <button type="button" onclick="printPDF()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">EXPORT AS PDF</button>
+                <button type="button" onclick="printWord()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">EXPORT AS WORD</button>
+                <button type="button" onclick="window.print()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-700">PRINT</button>
+                <button type="button" onclick="editForm()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 ml-auto">EDIT</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Clear Fields -->
+    <div id="clearModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center">
+            <h3 class="text-xl font-bold mb-3 text-gray-700">Clear Fields</h3>
+            <p class="mb-6 text-gray-600">Choose what to do with your current data:</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="modalExportKeep()" class="bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 font-semibold">1. Export but <span class="underline">keep</span> data on system</button>
+                <button onclick="modalExportAndClear()" class="bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 font-semibold">2. Export and <span class="underline">clear</span> all data</button>
+                <button onclick="modalJustClear()" class="bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 font-semibold">3. Clear all data, <span class="underline">do not export</span></button>
+                <button onclick="hideClearModal()" class="mt-4 text-gray-600 hover:text-black">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'vcriDocumentForwardingData';
+
+        function enforceUppercaseAndSave(e) {
+            if (e.target.type === "date") {
+                saveFormData();
+                return;
+            }
+            e.target.value = e.target.value.toUpperCase();
+            saveFormData();
+        }
+
+        function addRow(rowData = {}) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="border"><input type="text" name="trackDetails[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;" value="${rowData.trackDetails ? rowData.trackDetails.toUpperCase() : ''}"></td>
+                <td class="border"><input type="text" name="documentTitle[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;" value="${rowData.documentTitle ? rowData.documentTitle.toUpperCase() : ''}"></td>
+                <td class="border"><input type="text" name="office[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;" value="${rowData.office ? rowData.office.toUpperCase() : ''}"></td>
+                <td class="border"><input type="text" name="name[]" class="w-full p-5 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;" value="${rowData.name ? rowData.name.toUpperCase() : ''}"></td>
+                <td class="border"><input type="text" name="signature[]" class="w-full p-5 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;" value="${rowData.signature ? rowData.signature.toUpperCase() : ''}"></td>
+                <td class="border"><input type="date" name="date[]" class="w-full p-3 text-lg uppercase" autocomplete="off" style="text-transform: uppercase;" value="${rowData.date || ''}"></td>
+                <td class="border text-center">
+                    <button type="button" onclick="removeRow(this)" class="text-red-500 font-bold text-lg" title="Remove Row">&times;</button>
+                </td>
+            `;
+            document.getElementById('inputRows').appendChild(row);
+            attachInputListeners();
+            saveFormData();
+        }
+
+        function removeRow(btn) {
+            const rows = document.querySelectorAll('#inputRows tr');
+            if(rows.length === 1){
+                alert("AT LEAST ONE ROW IS REQUIRED.");
+                return;
+            }
+            btn.closest('tr').remove();
+            saveFormData();
+        }
+
+        function attachInputListeners() {
+            document.querySelectorAll('#inputRows input').forEach(input => {
+                input.oninput = enforceUppercaseAndSave;
+                input.onchange = enforceUppercaseAndSave;
+            });
+        }
+
+        function saveFormData() {
+            const rows = Array.from(document.querySelectorAll('#inputRows tr')).map(row => ({
+                trackDetails: row.querySelector('[name="trackDetails[]"]').value,
+                documentTitle: row.querySelector('[name="documentTitle[]"]').value,
+                office: row.querySelector('[name="office[]"]').value,
+                name: row.querySelector('[name="name[]"]').value,
+                signature: row.querySelector('[name="signature[]"]').value,
+                date: row.querySelector('[name="date[]"]').value,
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+        }
+
+        function loadFormData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if(saved) {
+                try {
+                    const rows = JSON.parse(saved);
+                    if(Array.isArray(rows) && rows.length) {
+                        document.getElementById('inputRows').innerHTML = '';
+                        for(const row of rows) {
+                            addRow(row);
+                        }
+                        return;
+                    }
+                } catch (e) {}
+            }
+            document.getElementById('inputRows').innerHTML = '';
+            addRow();
+        }
+
+        // ----- XLSX EXPORT with MM/DD/YYYY -----
+        function formatDateMDY(dateStr) {
+            if (!dateStr) return "";
+            const [year, month, day] = dateStr.split("-");
+            if (!year || !month || !day) return dateStr;
+            return `${month}/${day}/${year}`;
+        }
+        function exportToXLSX(data) {
+            if (!data || !data.length) return;
+            const headers = ["TRACK DETAILS","DOCUMENT TITLE","OFFICE/DEPARTMENT","NAME","SIGNATURE","DATE"];
+            const ws_data = [headers];
+            for (const row of data) {
+                ws_data.push([
+                    row.trackDetails, row.documentTitle, row.office,
+                    row.name, row.signature, formatDateMDY(row.date)
+                ]);
+            }
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+            // Autosize columns
+            const colWidths = headers.map((h, i) => {
+                const colData = [h, ...ws_data.slice(1).map(r => r[i] || "")];
+                const maxLen = colData.reduce((max, val) => Math.max(max, String(val||'').length), 10);
+                return { wch: maxLen + 3 };
+            });
+            ws['!cols'] = colWidths;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "VCRI Records");
+
+            const now = new Date();
+            const stamp = now.toISOString().replace(/[-T:.Z]/g,"").slice(0,14);
+            XLSX.writeFile(wb, `VCRI_Document_Export_${stamp}.xlsx`);
+        }
+
+        // --------- CLEAR FIELDS MODAL FUNCTIONALITY -----------
+        function showClearModal() {
+            document.getElementById('clearModal').classList.remove('hidden');
+        }
+        function hideClearModal() {
+            document.getElementById('clearModal').classList.add('hidden');
+        }
+
+        function modalExportKeep() {
+            const data = getCurrentTableData();
+            hideClearModal();
+            setTimeout(() => {
+                if (data && data.length) exportToXLSX(data);
+            }, 200);
+        }
+        function modalExportAndClear() {
+            const data = getCurrentTableData();
+            hideClearModal();
+            setTimeout(() => {
+                if (data && data.length) exportToXLSX(data);
+                actuallyClearFields();
+            }, 200);
+        }
+        function modalJustClear() {
+            hideClearModal();
+            setTimeout(() => {
+                actuallyClearFields();
+            }, 200);
+        }
+
+        function getCurrentTableData() {
+            return Array.from(document.querySelectorAll('#inputRows tr')).map(row => ({
+                trackDetails: row.querySelector('[name="trackDetails[]"]').value,
+                documentTitle: row.querySelector('[name="documentTitle[]"]').value,
+                office: row.querySelector('[name="office[]"]').value,
+                name: row.querySelector('[name="name[]"]').value,
+                signature: row.querySelector('[name="signature[]"]').value,
+                date: row.querySelector('[name="date[]"]').value,
+            }));
+        }
+
+        function actuallyClearFields() {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('inputRows').innerHTML = '';
+            addRow();
+        }
+
+        document.getElementById('dataForm').onsubmit = function(e) {
+            e.preventDefault();
+            const data = Array.from(document.querySelectorAll('#inputRows tr')).map(row => ({
+                trackDetails: row.querySelector('[name="trackDetails[]"]').value.toUpperCase(),
+                documentTitle: row.querySelector('[name="documentTitle[]"]').value.toUpperCase(),
+                office: row.querySelector('[name="office[]"]').value.toUpperCase(),
+                name: row.querySelector('[name="name[]"]').value.toUpperCase(),
+                signature: row.querySelector('[name="signature[]"]').value.toUpperCase(),
+                date: row.querySelector('[name="date[]"]').value
+            }));
+            showPreview(data);
+        };
+
+        function showPreview(data) {
+            let html = `
+            <div class="text-center text-2xl font-bold mb-6">RESEARCH OFFICE</div>
+            <table class="w-full min-w-[1200px] border mb-4">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border px-2 py-1">TRACK DETAILS</th>
+                        <th class="border px-2 py-1">DOCUMENT TITLE</th>
+                        <th class="border px-2 py-1">OFFICE/DEPARTMENT</th>
+                        <th class="border px-4 py-2">NAME</th>
+                        <th class="border px-4 py-2">SIGNATURE</th>
+                        <th class="border px-2 py-1">DATE</th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            for(const row of data) {
+                html += `<tr>
+                    <td class="border px-2 py-1">${row.trackDetails}</td>
+                    <td class="border px-2 py-1">${row.documentTitle}</td>
+                    <td class="border px-2 py-1">${row.office}</td>
+                    <td class="border px-4 py-2">${row.name}</td>
+                    <td class="border px-4 py-2">${row.signature}</td>
+                    <td class="border px-2 py-1">${row.date}</td>
+                </tr>`;
+            }
+            html += "</tbody></table>";
+            document.getElementById('printableContent').innerHTML = html;
+            document.getElementById('dataForm').classList.add('hidden');
+            document.getElementById('previewArea').classList.remove('hidden');
+            window.previewTableData = data;
+        }
+
+        function editForm() {
+            document.getElementById('previewArea').classList.add('hidden');
+            document.getElementById('dataForm').classList.remove('hidden');
+        }
+
+        // --- PDF EXPORT: Wide, No Margins, Wider NAME and SIGNATURE ---
+        function printPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: "landscape",
+                unit: "mm",
+                format: "a4"
+            });
+            doc.setFontSize(14);
+            doc.text("RESEARCH OFFICE", 14, 15);
+
+            let headers = ["TRACK DETAILS", "DOCUMENT TITLE", "OFFICE/DEPARTMENT", "NAME", "SIGNATURE", "DATE"];
+            doc.autoTable({
+                head: [headers],
+                body: window.previewTableData.map(row => [
+                    row.trackDetails, row.documentTitle, row.office,
+                    { content: row.name, styles: { cellPadding: { top: 6, right: 6, bottom: 6, left: 6 } } },
+                    { content: row.signature, styles: { cellPadding: { top: 6, right: 6, bottom: 6, left: 6 } } },
+                    row.date
+                ]),
+                startY: 25,
+                styles: { fontSize: 10 },
+                margin: { left: 0, right: 0, top: 0, bottom: 0 },
+                columnStyles: {
+                    3: { cellWidth: 50 },
+                    4: { cellWidth: 40 },
+                },
+                tableWidth: 'auto',
+            });
+            doc.save('DOCUMENT-TABLE.PDF');
+        }
+        (function() {
+            var script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js";
+            document.head.appendChild(script);
+        })();
+
+        // --- WORD EXPORT: Wide, No Margins, Wider NAME and SIGNATURE ---
+        async function printWord() {
+            const { Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun, WidthType } = window.docx;
+            const cellWidths = [14, 16, 14, 22, 18, 16];
+            const headersText = [
+                "TRACK DETAILS",
+                "DOCUMENT TITLE",
+                "OFFICE/DEPARTMENT",
+                "NAME",
+                "SIGNATURE",
+                "DATE"
+            ];
+            const headers = headersText.map((text, i) =>
+                new TableCell({
+                    width: { size: cellWidths[i], type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })],
+                })
+            );
+            const dataRows = window.previewTableData.map(row =>
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: { size: cellWidths[0], type: WidthType.PERCENTAGE },
+                            children: [new Paragraph(row.trackDetails || "")]
+                        }),
+                        new TableCell({
+                            width: { size: cellWidths[1], type: WidthType.PERCENTAGE },
+                            children: [new Paragraph(row.documentTitle || "")]
+                        }),
+                        new TableCell({
+                            width: { size: cellWidths[2], type: WidthType.PERCENTAGE },
+                            children: [new Paragraph(row.office || "")]
+                        }),
+                        new TableCell({
+                            width: { size: cellWidths[3], type: WidthType.PERCENTAGE },
+                            children: [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: (row.name || ""), size: 28 }),
+                                        new TextRun({ text: "\n" })
+                                    ],
+                                    spacing: { before: 100, after: 100 }
+                                })
+                            ]
+                        }),
+                        new TableCell({
+                            width: { size: cellWidths[4], type: WidthType.PERCENTAGE },
+                            children: [
+                                new Paragraph({
+                                    children: [
+                                        new TextRun({ text: (row.signature || ""), size: 28 }),
+                                        new TextRun({ text: "\n" })
+                                    ],
+                                    spacing: { before: 100, after: 100 }
+                                })
+                            ]
+                        }),
+                        new TableCell({
+                            width: { size: cellWidths[5], type: WidthType.PERCENTAGE },
+                            children: [new Paragraph(formatDateMDY(row.date) || "")]
+                        }),
+                    ]
+                })
+            );
+            const table = new Table({
+                rows: [
+                    new TableRow({ children: headers }),
+                    ...dataRows
+                ],
+                width: { size: 100, type: WidthType.PERCENTAGE }
+            });
+            const doc = new Document({
+                sections: [
+                    {
+                        properties: {
+                            margin: { top: 0, right: 0, bottom: 0, left: 0 },
+                            page: {
+                                size: {
+                                    orientation: "landscape",
+                                }
+                            }
+                        },
+                        children: [
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: "RESEARCH OFFICE", bold: true, size: 32 })
+                                ],
+                                spacing: { after: 200 }
+                            }),
+                            table
+                        ]
+                    }
+                ]
+            });
+            const blob = await Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'DOCUMENT-TABLE.DOCX';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => {
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }, 0);
+        }
+
+        window.onload = function() {
+            loadFormData();
+            attachInputListeners();
+        };
+    </script>
+</body>
+</html>
